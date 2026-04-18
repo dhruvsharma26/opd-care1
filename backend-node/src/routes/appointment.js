@@ -9,7 +9,7 @@ router.get("/doctor/:doctorId", appointmentController.getDoctorAppointments);
 router.get("/patient/:patientId", appointmentController.getPatientAppointments);
 
 // Generic routes
-router.post("/", appointmentController.createAppointment);
+router.post("/", verifyToken, appointmentController.createAppointment);
 router.get("/", appointmentController.getAppointments);
 router.get("/:id", appointmentController.getAppointmentById);
 router.patch("/:id", verifyToken, appointmentController.updateAppointment);

@@ -1,161 +1,291 @@
 import mongoose from "mongoose";
 
-const patientReportSchema = new mongoose.Schema({
-  symptoms: [String],
-  duration: String,
-  description: String,
-  medicalHistory: [String],
-  currentMedications: [String],
-  allergies: {
-    type: String,
-    default: "No known drug allergies",
-  },
-});
+const genderOptions = ["Male", "Female", "Other", "Non-binary", "Prefer not to say"];
 
-const appointmentSchema = new mongoose.Schema({
-  patientId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Patient",
+const patientReportSchema = new mongoose.Schema(
+  {
+    symptoms: {
+      type: [String],
+      default: [],
+    },
+    duration: {
+      type: String,
+      default: "",
+    },
+    description: {
+      type: String,
+      default: "",
+    },
+    diagnosis: {
+      type: String,
+      default: "",
+    },
+    prescription: {
+      type: String,
+      default: "",
+    },
+    followUpDate: {
+      type: String,
+      default: "",
+    },
+    notes: {
+      type: String,
+      default: "",
+    },
+    medicalHistory: {
+      type: [String],
+      default: [],
+    },
+    currentMedications: {
+      type: [String],
+      default: [],
+    },
+    allergies: {
+      type: String,
+      default: "No known drug allergies",
+    },
   },
-  patientName: String,
-  age: Number,
-  gender: {
-    type: String,
-    enum: ["Male", "Female", "Other"],
-  },
-  doctorId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Doctor",
-  },
-  doctorName: String,
-  specialty: String,
-  date: String,
-  time: String,
-  status: {
-    type: String,
-    enum: ["upcoming", "confirmed", "completed"],
-    default: "upcoming",
-  },
-  complaint: String,
-  severity: {
-    type: String,
-    enum: ["high", "moderate", "low"],
-    default: "moderate",
-  },
-  room: {
-    type: String,
-    default: "OPD-A · 3rd floor",
-  },
-  report: patientReportSchema,
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+  { _id: false },
+);
 
-const patientSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
+const appointmentSchema = new mongoose.Schema(
+  {
+    patientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Patient",
+      required: true,
+    },
+    patientName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    age: Number,
+    gender: {
+      type: String,
+      enum: genderOptions,
+    },
+    doctorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Doctor",
+      required: true,
+    },
+    doctorName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    specialty: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    date: {
+      type: String,
+      required: true,
+    },
+    time: {
+      type: String,
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ["upcoming", "confirmed", "completed", "cancelled"],
+      default: "upcoming",
+    },
+    complaint: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    severity: {
+      type: String,
+      enum: ["high", "moderate", "low"],
+      default: "moderate",
+    },
+    room: {
+      type: String,
+      default: "OPD-A - 3rd floor",
+    },
+    report: {
+      type: patientReportSchema,
+      default: () => ({}),
+    },
   },
-  name: String,
-  email: {
-    type: String,
-    unique: true,
-    sparse: true,
+  {
+    timestamps: true,
   },
-  phone: String,
-  age: Number,
-  gender: {
-    type: String,
-    enum: ["Male", "Female", "Other"],
-  },
-  bloodGroup: String,
-  medicalHistory: [String],
-  allergies: {
-    type: String,
-    default: "No known drug allergies",
-  },
-  token: String,
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+);
 
-const doctorSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
+const patientSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      unique: true,
+    },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    email: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      lowercase: true,
+    },
+    phone: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    age: Number,
+    gender: {
+      type: String,
+      enum: genderOptions,
+    },
+    bloodGroup: {
+      type: String,
+      default: "",
+    },
+    medicalHistory: {
+      type: [String],
+      default: [],
+    },
+    currentMedications: {
+      type: [String],
+      default: [],
+    },
+    allergies: {
+      type: String,
+      default: "No known drug allergies",
+    },
+    latestComplaint: {
+      type: String,
+      default: "",
+    },
+    token: {
+      type: String,
+      default: "",
+    },
   },
-  name: String,
-  email: {
-    type: String,
-    unique: true,
-    sparse: true,
+  {
+    timestamps: true,
   },
-  specialty: String,
-  rating: {
-    type: Number,
-    default: 4.5,
-  },
-  experience: Number,
-  fee: Number,
-  avatar: String,
-  availableToday: {
-    type: Boolean,
-    default: true,
-  },
-  nextSlot: String,
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+);
 
-const userSchema = new mongoose.Schema({
-  email: {
-    type: String,
-    unique: true,
-    required: true,
+const doctorSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      sparse: true,
+    },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    email: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      lowercase: true,
+    },
+    phone: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    specialty: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    license_number: {
+      type: String,
+      trim: true,
+    },
+    rating: {
+      type: Number,
+      default: 4.5,
+    },
+    experience: {
+      type: Number,
+      default: 0,
+    },
+    fee: {
+      type: Number,
+      default: 500,
+    },
+    avatar: {
+      type: String,
+      default: "",
+    },
+    availableToday: {
+      type: Boolean,
+      default: true,
+    },
+    nextSlot: {
+      type: String,
+      default: "11:00 AM",
+    },
   },
-  name: String,
-  password: String,
-  role: {
-    type: String,
-    enum: ["patient", "doctor", "admin"],
-    default: "patient",
+  {
+    timestamps: true,
   },
-  phone: String,
-  patientId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Patient",
-  },
-  doctorId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Doctor",
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+);
 
-// Create indexes
-appointmentSchema.index({ patientId: 1 });
-appointmentSchema.index({ doctorId: 1 });
+const userSchema = new mongoose.Schema(
+  {
+    email: {
+      type: String,
+      unique: true,
+      required: true,
+      trim: true,
+      lowercase: true,
+    },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    password: {
+      type: String,
+      required: true,
+    },
+    role: {
+      type: String,
+      enum: ["patient", "doctor", "admin"],
+      default: "patient",
+    },
+    phone: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    patientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Patient",
+    },
+    doctorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Doctor",
+    },
+  },
+  {
+    timestamps: true,
+  },
+);
+
+appointmentSchema.index({ patientId: 1, createdAt: -1 });
+appointmentSchema.index({ doctorId: 1, createdAt: -1 });
 patientSchema.index({ email: 1 });
-patientSchema.index({ userId: 1 });
 doctorSchema.index({ email: 1 });
-doctorSchema.index({ userId: 1 });
 userSchema.index({ email: 1 });
 
 export const Appointment = mongoose.model("Appointment", appointmentSchema);

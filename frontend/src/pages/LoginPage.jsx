@@ -27,7 +27,6 @@ const ROLES = [
     tag: "Book · Track · Heal",
     icon: User,
     demo: "patient@opd.care",
-    tint: "sage",
   },
   {
     id: "doctor",
@@ -35,7 +34,6 @@ const ROLES = [
     tag: "Queue · Consult · Note",
     icon: Stethoscope,
     demo: "doctor@opd.care",
-    tint: "accent",
   },
   {
     id: "admin",
@@ -43,7 +41,6 @@ const ROLES = [
     tag: "Monitor · Audit · Report",
     icon: ShieldCheck,
     demo: "admin@opd.care",
-    tint: "sand",
   },
 ];
 
@@ -51,6 +48,7 @@ export default function LoginPage() {
   const { user, signIn, signUp } = useAuth();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
+  const userRole = user?.role;
 
   const [role, setRole] = useState("patient");
   const [mode, setMode] = useState("signin");
@@ -65,42 +63,48 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  if (user) return <Navigate to={`/${user.role}`} replace />;
+  if (userRole) return <Navigate to={`/${userRole}`} replace />;
 
-  const onChange = (k) => (e) =>
-    setForm((f) => ({ ...f, [k]: e.target.value }));
+  const onChange = (key) => (e) =>
+    setForm((current) => ({ ...current, [key]: e.target.value }));
 
   const submit = async (e) => {
     e.preventDefault();
     setError("");
 
     try {
+      setLoading(true);
       if (mode === "signup") {
-        if (!form.name || !form.email)
-          return setError("Please enter your name and email.");
-        if (form.password !== form.confirm)
-          return setError("Passwords do not match.");
+        if (!form.name || !form.email) {
+          setError("Please enter your name and email.");
+          return;
+        }
+        if (form.password !== form.confirm) {
+          setError("Passwords do not match.");
+          return;
+        }
 
-        setLoading(true);
-        await signUp({
+        const createdUser = await signUp({
           name: form.name,
           email: form.email,
           password: form.password,
           phone: form.phone,
           role,
         });
-        navigate(`/${role}`);
-      } else {
-        if (!form.email || !form.password)
-          return setError("Please enter your email and password.");
-
-        setLoading(true);
-        await signIn({
-          email: form.email,
-          password: form.password,
-        });
-        navigate(`/${role}`);
+        navigate(`/${createdUser.role || "patient"}`, { replace: true });
+        return;
       }
+
+      if (!form.email || !form.password) {
+        setError("Please enter your email and password.");
+        return;
+      }
+
+      const signedInUser = await signIn({
+        email: form.email,
+        password: form.password,
+      });
+      navigate(`/${signedInUser.role || "patient"}`, { replace: true });
     } catch (err) {
       setError(
         err.response?.data?.error || "Authentication failed. Please try again.",
@@ -111,9 +115,9 @@ export default function LoginPage() {
   };
 
   const fillDemo = () => {
-    const picked = ROLES.find((r) => r.id === role);
-    setForm((f) => ({
-      ...f,
+    const picked = ROLES.find((entry) => entry.id === role);
+    setForm((current) => ({
+      ...current,
       email: picked.demo,
       password: "demo1234",
       confirm: "demo1234",
@@ -124,21 +128,21 @@ export default function LoginPage() {
     try {
       setLoading(true);
       setError("");
-      const picked = ROLES.find((r) => r.id === role);
-      await signIn({
+      const picked = ROLES.find((entry) => entry.id === role);
+      const signedInUser = await signIn({
         email: picked.demo,
         password: "demo1234",
       });
-      navigate(`/${role}`);
-    } catch (err) {
+      navigate(`/${signedInUser.role || "patient"}`, { replace: true });
+    } catch {
       setError("Demo login failed. Please use manual credentials.");
+    } finally {
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen w-full bg-background mesh-bg relative overflow-hidden">
-      {/* Ambient drifting orbs */}
       <div className="pointer-events-none absolute -top-32 -left-24 w-[520px] h-[520px] rounded-full bg-accent/15 blur-3xl animate-drift" />
       <div
         className="pointer-events-none absolute top-1/3 -right-32 w-[460px] h-[460px] rounded-full bg-primary/15 blur-3xl animate-drift"
@@ -149,7 +153,6 @@ export default function LoginPage() {
         style={{ animationDelay: "-14s" }}
       />
 
-      {/* Top-bar mini */}
       <div className="absolute top-0 inset-x-0 z-10">
         <div className="max-w-7xl mx-auto px-6 lg:px-10 py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -181,7 +184,6 @@ export default function LoginPage() {
       </div>
 
       <div className="relative z-[5] min-h-screen grid grid-cols-1 lg:grid-cols-[1.05fr_1fr]">
-        {/* LEFT — Story panel */}
         <section className="hidden lg:flex flex-col justify-between px-12 xl:px-20 py-24">
           <div className="max-w-xl">
             <span className="chip mb-6" data-testid="hero-chip">
@@ -194,140 +196,90 @@ export default function LoginPage() {
               <span className="italic text-accent">warmly</span> intelligent.
             </h1>
             <p className="mt-6 text-muted-foreground text-lg leading-relaxed max-w-md">
-              A single, calm console for patients, clinicians and operations —
-              powered by AI triage, live occupancy and thoughtful design that
-              keeps the waiting-room human.
+              A calm console for patients, clinicians, and operations with real
+              persistence behind signup, intake, and doctor dashboards.
             </p>
 
-            {/* feature chips */}
             <div className="mt-10 grid grid-cols-2 gap-3 max-w-md">
               {[
                 {
                   icon: HeartPulse,
                   title: "Vitals timeline",
-                  hint: "daily trend",
+                  hint: "patient profile",
                 },
                 {
                   icon: ActivityIcon,
                   title: "Live headcount",
-                  hint: "by department",
+                  hint: "doctor queue",
                 },
                 {
                   icon: Stethoscope,
                   title: "Smart queue",
-                  hint: "severity-aware",
+                  hint: "real bookings",
                 },
                 {
                   icon: ShieldCheck,
-                  title: "HIPAA posture",
-                  hint: "audit-ready",
+                  title: "Protected auth",
+                  hint: "JWT + MongoDB",
                 },
-              ].map(({ icon: Ic, title, hint }) => (
+              ].map(({ icon: Icon, title, hint }) => (
                 <div key={title} className="glass rounded-2xl p-4">
-                  <Ic className="w-4 h-4 text-accent mb-2" />
+                  <Icon className="w-4 h-4 text-accent mb-2" />
                   <p className="text-sm font-medium">{title}</p>
                   <p className="text-[11px] text-muted-foreground">{hint}</p>
                 </div>
               ))}
             </div>
           </div>
-
-          {/* Floating preview card */}
-          <div className="relative max-w-md">
-            <div className="glass rounded-3xl p-5 shadow-lift animate-float-soft">
-              <div className="flex items-center justify-between mb-3">
-                <span className="chip">
-                  <span className="w-1.5 h-1.5 rounded-full bg-sage" /> Live
-                </span>
-                <span className="font-mono text-xs text-muted-foreground">
-                  OPD-A · 3F
-                </span>
-              </div>
-              <p className="font-display text-xl leading-tight">
-                Dr. Mehta is calling token{" "}
-                <span className="text-accent">#12</span>
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Average wait · 6 min · Severity aware ordering
-              </p>
-              <div className="mt-4 flex items-center gap-2">
-                <div className="flex -space-x-2">
-                  {["KM", "SR", "MS"].map((t, i) => (
-                    <span
-                      key={t}
-                      className="w-7 h-7 rounded-full border-2 border-background grid place-items-center text-[10px] font-semibold bg-primary/10 text-primary"
-                      style={{ zIndex: 10 - i }}
-                    >
-                      {t}
-                    </span>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  3 doctors online
-                </p>
-              </div>
-            </div>
-          </div>
         </section>
 
-        {/* RIGHT — Auth panel */}
         <section className="flex items-center justify-center px-5 sm:px-10 py-24 lg:py-16">
           <div className="w-full max-w-md">
-            <div
-              className="glass rounded-[28px] p-6 sm:p-8 shadow-lift relative overflow-hidden grain"
-              data-testid="login-card"
-            >
+            <div className="glass rounded-[28px] p-6 sm:p-8 shadow-lift relative overflow-hidden grain">
               <div className="mb-6">
                 <h2 className="font-display text-2xl">Welcome back</h2>
                 <p className="text-sm text-muted-foreground">
-                  Pick a role, sign in — we'll route you to the right dashboard.
+                  Pick a role and sign in. We&apos;ll send you to the matching
+                  dashboard after login.
                 </p>
               </div>
 
-              {/* Role toggle — the ACTUAL working one */}
               <div
                 role="tablist"
                 aria-label="Select role"
                 className="relative grid grid-cols-3 bg-muted/60 p-1 rounded-full mb-5"
-                data-testid="role-toggle"
               >
-                {/* Moving pill */}
                 <div
                   aria-hidden
-                  className="absolute top-1 bottom-1 w-[calc((100%-0.5rem)/3)] rounded-full bg-card shadow-soft border border-border transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+                  className="absolute top-1 bottom-1 w-[calc((100%-0.5rem)/3)] rounded-full bg-card shadow-soft border border-border transition-all duration-500"
                   style={{
-                    left: `calc(${ROLES.findIndex((r) => r.id === role)} * (100% - 0.5rem)/3 + 0.25rem)`,
+                    left: `calc(${ROLES.findIndex((entry) => entry.id === role)} * (100% - 0.5rem)/3 + 0.25rem)`,
                   }}
                 />
-                {ROLES.map((r) => {
-                  const Ic = r.icon;
-                  const active = role === r.id;
+                {ROLES.map((entry) => {
+                  const Icon = entry.icon;
+                  const active = role === entry.id;
                   return (
                     <button
-                      key={r.id}
+                      key={entry.id}
                       role="tab"
                       aria-selected={active}
                       type="button"
-                      onClick={() => setRole(r.id)}
-                      data-testid={`role-tab-${r.id}`}
+                      onClick={() => setRole(entry.id)}
                       className={`relative z-10 flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-medium transition-colors ${
                         active
                           ? "text-foreground"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      <Ic className="w-4 h-4" />
-                      <span>{r.label}</span>
+                      <Icon className="w-4 h-4" />
+                      <span>{entry.label}</span>
                     </button>
                   );
                 })}
               </div>
 
-              {/* Active role tag */}
-              <div
-                className="flex items-center justify-between mb-5 animate-enter"
-                key={role}
-              >
+              <div className="flex items-center justify-between mb-5">
                 <div>
                   <p className="text-[11px] uppercase tracking-widest text-muted-foreground">
                     Signing in as
@@ -336,43 +288,42 @@ export default function LoginPage() {
                     {role}
                     <span className="text-muted-foreground font-sans text-sm">
                       {" "}
-                      · {ROLES.find((r) => r.id === role).tag}
+                      · {ROLES.find((entry) => entry.id === role).tag}
                     </span>
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={fillDemo}
-                  data-testid="fill-demo-btn"
                   className="text-xs chip hover:border-ring cursor-pointer transition"
                 >
                   Use demo
                 </button>
               </div>
 
-              {/* Mode switch */}
               <div className="grid grid-cols-2 mb-5 border-b border-border">
-                {["signin", "signup"].map((m) => (
+                {["signin", "signup"].map((entry) => (
                   <button
-                    key={m}
+                    key={entry}
                     type="button"
-                    onClick={() => setMode(m)}
-                    data-testid={`mode-${m}`}
-                    className={`py-2 text-sm relative transition ${mode === m ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    onClick={() => setMode(entry)}
+                    className={`py-2 text-sm relative transition ${
+                      mode === entry
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
                   >
-                    {m === "signin" ? "Sign in" : "Create account"}
+                    {entry === "signin" ? "Sign in" : "Create account"}
                     <span
-                      className={`absolute left-0 right-0 -bottom-px h-0.5 bg-accent transition-all ${mode === m ? "scale-x-100" : "scale-x-0"}`}
+                      className={`absolute left-0 right-0 -bottom-px h-0.5 bg-accent transition-all ${
+                        mode === entry ? "scale-x-100" : "scale-x-0"
+                      }`}
                     />
                   </button>
                 ))}
               </div>
 
-              <form
-                onSubmit={submit}
-                className="space-y-3"
-                data-testid="auth-form"
-              >
+              <form onSubmit={submit} className="space-y-3">
                 {mode === "signup" && (
                   <div className="grid grid-cols-2 gap-3">
                     <div className="relative">
@@ -382,7 +333,6 @@ export default function LoginPage() {
                         placeholder="Full name"
                         value={form.name}
                         onChange={onChange("name")}
-                        data-testid="input-name"
                         className="input-base pl-9"
                       />
                     </div>
@@ -392,7 +342,6 @@ export default function LoginPage() {
                         placeholder="Phone"
                         value={form.phone}
                         onChange={onChange("phone")}
-                        data-testid="input-phone"
                         className="input-base pl-9"
                       />
                     </div>
@@ -407,7 +356,6 @@ export default function LoginPage() {
                     placeholder="Email address"
                     value={form.email}
                     onChange={onChange("email")}
-                    data-testid="input-email"
                     className="input-base pl-9"
                   />
                 </div>
@@ -419,15 +367,13 @@ export default function LoginPage() {
                     placeholder="Password"
                     value={form.password}
                     onChange={onChange("password")}
-                    data-testid="input-password"
                     className="input-base pl-9 pr-10"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPw((s) => !s)}
+                    onClick={() => setShowPw((current) => !current)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     aria-label="Toggle password visibility"
-                    data-testid="toggle-password"
                   >
                     {showPw ? (
                       <EyeOff className="w-4 h-4" />
@@ -445,29 +391,20 @@ export default function LoginPage() {
                       placeholder="Confirm password"
                       value={form.confirm}
                       onChange={onChange("confirm")}
-                      data-testid="input-confirm"
                       className="input-base pl-9"
                     />
                   </div>
                 )}
 
-                {error && (
-                  <p
-                    className="text-sm text-destructive"
-                    data-testid="auth-error"
-                  >
-                    {error}
-                  </p>
-                )}
+                {error && <p className="text-sm text-destructive">{error}</p>}
 
                 <button
                   type="submit"
                   disabled={loading}
-                  data-testid="submit-btn"
                   className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-70"
                 >
                   {loading
-                    ? "Signing you in…"
+                    ? "Signing you in..."
                     : mode === "signin"
                       ? "Sign in"
                       : "Create account"}
@@ -477,24 +414,11 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={quickLogin}
-                  data-testid="quick-login-btn"
                   className="w-full btn-ghost text-sm"
                 >
-                  Skip — enter as demo {role}
+                  Skip and enter as demo {role}
                 </button>
               </form>
-
-              <p className="text-[11px] text-center text-muted-foreground mt-5">
-                By continuing you agree to our{" "}
-                <a href="#" className="link-underline">
-                  Terms
-                </a>{" "}
-                and{" "}
-                <a href="#" className="link-underline">
-                  Privacy
-                </a>
-                . No real credentials needed — this is a demo.
-              </p>
             </div>
           </div>
         </section>

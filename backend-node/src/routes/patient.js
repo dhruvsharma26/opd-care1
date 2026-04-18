@@ -4,7 +4,7 @@ import { verifyToken } from "../middleware/auth.js";
 
 const router = express.Router();
 
-router.post("/", patientController.createPatient);
+router.post("/", verifyToken, patientController.createPatient);
 router.get("/", patientController.getPatients);
 router.get("/:id", patientController.getPatientById);
 router.patch("/:id", verifyToken, patientController.updatePatient);
