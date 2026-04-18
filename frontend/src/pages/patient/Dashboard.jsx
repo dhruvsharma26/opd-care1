@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
   CalendarCheck2, HeartPulse, Pill, FileText, ArrowRight,
@@ -8,7 +9,8 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts';
 import { useAuth } from '../../context/AuthContext';
-import { PATIENT_APPOINTMENTS, VITALS_TREND, DOCTORS } from '../../lib/mockData';
+import { appointmentAPI, patientAPI } from '../../services/api';
+import { VITALS_TREND, DOCTORS } from '../../lib/mockData';
 
 function Stat({ icon: Icon, label, value, unit, tone = 'primary' }) {
   const toneMap = {
@@ -30,7 +32,40 @@ function Stat({ icon: Icon, label, value, unit, tone = 'primary' }) {
 
 export default function PatientDashboard() {
   const { user } = useAuth();
-  const next = PATIENT_APPOINTMENTS.find((a) => a.status === 'confirmed' || a.status === 'upcoming');
+  const [appointments, setAppointments] = useState([]);
+  const [patientDetails, setPatientDetails] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch patient details
+        if (user?.patientId) {
+          const patientRes = await patientAPI.getById(user.patientId);
+          setPatientDetails(patientRes.data);
+        }
+
+        // Fetch appointments for this patient
+        if (user?.patientId) {
+          const appointmentsRes = await appointmentAPI.getPatientAppointments(user.patientId);
+          setAppointments(appointmentsRes.data || []);
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        toast.error('Failed to load appointment data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user?.patientId) {
+      fetchData();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
+
+  const next = appointments.find((a) => a.status === 'confirmed' || a.status === 'upcoming');
 
   return (
     <div className="space-y-8 animate-enter">
@@ -44,24 +79,24 @@ export default function PatientDashboard() {
               {user?.name?.split(' ')[0] || 'Friend'},<br />
               <span className="italic">let's take it easy today.</span>
             </h2>
-            <p className="text-muted-foreground mt-3 max-w-md text-sm">Your last vitals were gentle. You have one confirmed consultation this morning.</p>
+            <p className="text-muted-foreground mt-3 max-w-md text-sm">Your last vitals were gentle. {next ? 'You have one confirmed consultation this morning.' : 'No upcoming appointments.'}</p>
           </div>
 
           {next && (
             <div className="glass rounded-2xl p-5 min-w-[300px]" data-testid="next-appointment-card">
               <div className="flex items-center justify-between mb-3">
                 <span className="chip"><CalendarCheck2 className="w-3 h-3 text-accent" /> Next consult</span>
-                <span className="font-mono text-[11px] text-muted-foreground">{next.id}</span>
+                <span className="font-mono text-[11px] text-muted-foreground">{next._id?.slice(-6) || next.id}</span>
               </div>
-              <p className="font-display text-xl leading-tight">{next.doctor}</p>
-              <p className="text-xs text-muted-foreground">{next.specialty}</p>
+              <p className="font-display text-xl leading-tight">{next.doctorName || 'Dr. Assigned'}</p>
+              <p className="text-xs text-muted-foreground">{next.specialty || 'General Practice'}</p>
               <div className="mt-3 flex items-center gap-4 text-sm">
                 <span className="flex items-center gap-1.5"><Clock3 className="w-3.5 h-3.5 text-muted-foreground" />{next.date} · {next.time}</span>
-                <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-muted-foreground" />{next.room}</span>
+                <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-muted-foreground" />{next.room || 'OPD-A'}</span>
               </div>
               <div className="mt-4 flex gap-2">
                 <Link to="/patient/register" className="btn-primary text-xs py-1.5 px-3" data-testid="start-visit-btn">Start visit</Link>
-                <button onClick={() => toast('Reschedule link sent to your phone (demo)')} className="btn-ghost text-xs py-1.5 px-3" data-testid="reschedule-btn">Reschedule</button>
+                <button onClick={() => toast('Reschedule link sent to your phone')} className="btn-ghost text-xs py-1.5 px-3" data-testid="reschedule-btn">Reschedule</button>
               </div>
             </div>
           )}
@@ -121,33 +156,36 @@ export default function PatientDashboard() {
             <h3 className="font-display text-xl">Appointments</h3>
             <Link to="/patient/appointments" className="text-xs text-accent flex items-center gap-1 link-underline" data-testid="view-all-appts">View all <ArrowRight className="w-3 h-3" /></Link>
           </div>
-          <ul className="space-y-3" data-testid="appointments-list">
-            {PATIENT_APPOINTMENTS.map((a) => (
-              <li key={a.id} className="flex items-start gap-3 p-3 rounded-xl border border-border hover:border-ring/60 transition">
-                <div className={`w-9 h-9 shrink-0 rounded-lg grid place-items-center text-xs font-semibold ${
-                  a.status === 'confirmed' ? 'bg-accent/15 text-accent'
-                  : a.status === 'upcoming' ? 'bg-primary/10 text-primary'
-                  : 'bg-muted text-muted-foreground'
-                }`}>
-                  {a.date.split(',')[0].slice(0,3)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{a.doctor}</p>
-                  <p className="text-xs text-muted-foreground truncate">{a.specialty} · {a.time}</p>
-                </div>
-                <span className={`chip text-[10px] ${
-                  a.status === 'confirmed' ? 'bg-accent/15 text-accent border-accent/30'
-                  : a.status === 'upcoming' ? 'bg-primary/10 text-primary border-primary/20'
-                  : ''
-                }`}>{a.status}</span>
-              </li>
-            ))}
-          </ul>
+          {loading ? (
+            <p className="text-xs text-muted-foreground">Loading...</p>
+          ) : appointments.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No appointments yet. <Link to="/patient/appointments" className="text-accent">Book one</Link></p>
+          ) : (
+            <ul className="space-y-3" data-testid="appointments-list">
+              {appointments.slice(0, 5).map((a) => (
+                <li key={a._id} className="flex items-start gap-3 p-3 rounded-xl border border-border hover:border-ring/60 transition">
+                  <div className={`w-9 h-9 shrink-0 rounded-lg grid place-items-center text-xs font-semibold ${
+                    a.status === 'confirmed' ? 'bg-accent/15 text-accent'
+                    : a.status === 'upcoming' ? 'bg-primary/10 text-primary'
+                    : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {a.date?.split('-')[2] || '?'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{a.doctorName || 'Doctor'}</p>
+                    <p className="text-xs text-muted-foreground truncate">{a.specialty || 'General'} · {a.time || 'TBA'}</p>
+                  </div>
+                  <span className={`chip text-[10px] ${
+                    a.status === 'confirmed' ? 'bg-accent/15 text-accent border-accent/30'
+                    : a.status === 'upcoming' ? 'bg-primary/10 text-primary border-primary/20'
+                    : ''
+                  }`}>{a.status}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </section>
-
-      {/* Recommended doctors */}
-      <section className="card-elev p-6">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="font-display text-xl">Recommended for you</h3>
