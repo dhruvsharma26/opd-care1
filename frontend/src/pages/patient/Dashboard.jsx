@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   CalendarCheck2, HeartPulse, Pill, FileText, ArrowRight,
   Activity, Droplets, Wind, Stethoscope, MapPin, Clock3
@@ -60,7 +61,7 @@ export default function PatientDashboard() {
               </div>
               <div className="mt-4 flex gap-2">
                 <Link to="/patient/register" className="btn-primary text-xs py-1.5 px-3" data-testid="start-visit-btn">Start visit</Link>
-                <button className="btn-ghost text-xs py-1.5 px-3">Reschedule</button>
+                <button onClick={() => toast('Reschedule link sent to your phone (demo)')} className="btn-ghost text-xs py-1.5 px-3" data-testid="reschedule-btn">Reschedule</button>
               </div>
             </div>
           )}
@@ -190,8 +191,8 @@ export default function PatientDashboard() {
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
           { icon: Stethoscope, title: 'Describe symptoms', hint: 'Voice or text', to: '/patient/register', testid: 'qa-register' },
-          { icon: Pill, title: 'My prescriptions', hint: '2 active', to: '#', testid: 'qa-prescriptions' },
-          { icon: FileText, title: 'Lab reports', hint: '5 available', to: '#', testid: 'qa-reports' },
+          { icon: Pill, title: 'My prescriptions', hint: '2 active', to: '/patient/records', testid: 'qa-prescriptions' },
+          { icon: FileText, title: 'Lab reports', hint: '5 available', to: '/patient/records', testid: 'qa-reports' },
         ].map((q) => (
           <Link
             key={q.title}

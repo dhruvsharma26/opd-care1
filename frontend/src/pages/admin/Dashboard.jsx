@@ -1,4 +1,5 @@
 import { Users, Activity, Calendar, FileText, TrendingUp, Download, Bell, Stethoscope, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line } from 'recharts';
 import { DEPARTMENT_LOAD, FOOTFALL_BY_HOUR, ACTIVITY_LOGS } from '../../lib/mockData';
 
@@ -31,6 +32,21 @@ function Kpi({ icon: Icon, label, value, trend, tone }) {
 export default function AdminDashboard() {
   const date = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
+  const onNotify = () => toast.success('Notice broadcast to 27 staff across 6 departments');
+  const onExport = () => toast.success('Daily OPD report generated', { description: 'opd_daily_report.pdf · 2.1 MB' });
+  const onControl = (label) => {
+    if (label.startsWith('Clear')) {
+      toast('Audit logs archived (7d retention enforced)');
+    } else if (label.startsWith('Broadcast')) {
+      toast.success('Broadcast scheduled to all on-shift staff');
+    } else if (label.startsWith('Export')) {
+      toast.success('Patient roster exported · CSV downloaded');
+    } else {
+      toast.success('Report queued — notification when ready');
+    }
+  };
+  const onClearLogs = () => toast('Activity stream reset');
+
   return (
     <div className="space-y-6 animate-enter">
       {/* Hero strip */}
@@ -43,8 +59,8 @@ export default function AdminDashboard() {
             <p className="text-muted-foreground mt-2 text-sm">Occupancy 68% · 3 departments above threshold · no critical alerts.</p>
           </div>
           <div className="flex items-center gap-2">
-            <button className="btn-ghost text-sm flex items-center gap-2" data-testid="notify-all-btn"><Bell className="w-3.5 h-3.5" /> Notify staff</button>
-            <button className="btn-primary text-sm flex items-center gap-2" data-testid="export-report-btn"><Download className="w-3.5 h-3.5" /> Export daily report</button>
+            <button onClick={onNotify} className="btn-ghost text-sm flex items-center gap-2" data-testid="notify-all-btn"><Bell className="w-3.5 h-3.5" /> Notify staff</button>
+            <button onClick={onExport} className="btn-primary text-sm flex items-center gap-2" data-testid="export-report-btn"><Download className="w-3.5 h-3.5" /> Export daily report</button>
           </div>
         </div>
       </section>
@@ -123,7 +139,7 @@ export default function AdminDashboard() {
               <h3 className="font-display text-xl">Activity stream</h3>
               <p className="text-xs text-muted-foreground">System-wide recent events</p>
             </div>
-            <button className="text-xs text-muted-foreground link-underline" data-testid="clear-logs-btn">Clear</button>
+            <button className="text-xs text-muted-foreground link-underline" onClick={onClearLogs} data-testid="clear-logs-btn">Clear</button>
           </div>
           <ul className="space-y-2" data-testid="activity-logs">
             {ACTIVITY_LOGS.map((log) => (

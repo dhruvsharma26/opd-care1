@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Clock, Users, CheckCircle2, PlayCircle, PauseCircle, UserRound, ChevronRight, Timer, Activity } from 'lucide-react';
+import { toast } from 'sonner';
 import { PATIENT_QUEUE } from '../../lib/mockData';
 import { useAuth } from '../../context/AuthContext';
 
@@ -41,7 +42,21 @@ export default function DoctorDashboard() {
     completed: patients.filter(p => p.status === 'completed').length,
   }), [patients]);
 
-  const setStatus = (id, status) => setPatients(p => p.map(x => x.id === id ? { ...x, status } : x));
+  const setStatus = (id, status) => {
+    setPatients(p => p.map(x => x.id === id ? { ...x, status } : x));
+    const names = { 'in-progress': 'started', 'completed': 'completed', 'waiting': 'placed on hold' };
+    toast.success(`Patient ${names[status]}`);
+  };
+
+  const nextPatient = () => {
+    const next = patients.find(p => p.status === 'waiting');
+    if (!next) return toast('No patients waiting');
+    setPatients(p => p.map(x => x.id === next.id ? { ...x, status: 'in-progress' } : x));
+    setSelected(next.id);
+    toast.success(`Calling ${next.name} · Token #${next.token}`);
+  };
+
+  const takeBreak = () => toast('Short break started · queue paused for 10 min', { icon: '☕' });
 
   const active = patients.find(p => p.id === selected);
 
@@ -55,8 +70,8 @@ export default function DoctorDashboard() {
           <p className="text-sm text-muted-foreground mt-1">You have <span className="text-foreground font-medium">{counts.waiting}</span> patients waiting · average wait <span className="text-foreground font-medium">6 min</span></p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="btn-ghost text-sm" data-testid="break-btn"><PauseCircle className="w-4 h-4 mr-1" /> Short break</button>
-          <button className="btn-primary text-sm flex items-center gap-2" data-testid="next-patient-btn"><PlayCircle className="w-4 h-4" /> Next patient</button>
+          <button onClick={takeBreak} className="btn-ghost text-sm" data-testid="break-btn"><PauseCircle className="w-4 h-4 mr-1" /> Short break</button>
+          <button onClick={nextPatient} className="btn-primary text-sm flex items-center gap-2" data-testid="next-patient-btn"><PlayCircle className="w-4 h-4" /> Next patient</button>
         </div>
       </section>
 

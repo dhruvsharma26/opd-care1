@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   LayoutDashboard, Calendar, Stethoscope, Users2, ClipboardList, Activity,
   FileText, ShieldCheck, UserCircle2, Headphones, Gauge, Building2, HeartPulse
@@ -78,7 +79,11 @@ export default function Sidebar({ role }) {
         <Headphones className="w-5 h-5 text-accent mb-2" />
         <p className="font-display text-base leading-snug mb-1">24×7 Tele-triage</p>
         <p className="text-xs text-muted-foreground mb-3">Stuck in queue? Talk to our AI nurse.</p>
-        <button className="btn-accent text-xs py-1.5 px-3" data-testid="tele-triage-btn">Start call</button>
+        <button
+          onClick={() => toast.success('Connecting you to an AI nurse…', { description: 'Estimated wait: <30s' })}
+          className="btn-accent text-xs py-1.5 px-3"
+          data-testid="tele-triage-btn"
+        >Start call</button>
       </div>
     </aside>
   );

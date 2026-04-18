@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import AppShell from './components/layout/AppShell';
@@ -7,19 +8,16 @@ import LoginPage from './pages/LoginPage';
 import PatientDashboard from './pages/patient/Dashboard';
 import PatientRegister from './pages/patient/Register';
 import BookAppointment from './pages/patient/BookAppointment';
+import HealthRecords from './pages/patient/HealthRecords';
 import DoctorDashboard from './pages/doctor/Dashboard';
+import DoctorSchedule from './pages/doctor/Schedule';
+import DoctorPatients from './pages/doctor/Patients';
+import ConsultNotes from './pages/doctor/ConsultNotes';
 import AdminDashboard from './pages/admin/Dashboard';
 import Headcount from './pages/admin/Headcount';
-
-function ComingSoon({ title }) {
-  return (
-    <div className="card-elev p-10 text-center animate-enter">
-      <p className="text-xs uppercase tracking-widest text-muted-foreground">Coming soon</p>
-      <h2 className="font-display text-3xl mt-2">{title}</h2>
-      <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">We're polishing this view — check back shortly. Meanwhile, explore the live dashboards.</p>
-    </div>
-  );
-}
+import Staff from './pages/admin/Staff';
+import Departments from './pages/admin/Departments';
+import AuditLogs from './pages/admin/AuditLogs';
 
 function RoleRedirect() {
   return <Navigate to="/login" replace />;
@@ -30,6 +28,19 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              className: 'font-sans',
+              style: {
+                background: 'hsl(var(--card))',
+                color: 'hsl(var(--foreground))',
+                border: '1px solid hsl(var(--border))',
+                borderRadius: '14px',
+                fontFamily: 'Manrope, sans-serif',
+              },
+            }}
+          />
           <Routes>
             <Route path="/" element={<RoleRedirect />} />
             <Route path="/login" element={<LoginPage />} />
@@ -39,24 +50,24 @@ export default function App() {
               <Route path="/patient" element={<PatientDashboard />} />
               <Route path="/patient/appointments" element={<BookAppointment />} />
               <Route path="/patient/register" element={<PatientRegister />} />
-              <Route path="/patient/records" element={<ComingSoon title="Health records" />} />
+              <Route path="/patient/records" element={<HealthRecords />} />
             </Route>
 
             {/* Doctor */}
             <Route element={<AppShell allowedRoles={['doctor']} title="Clinician console" subtitle="Queue & consults" />}>
               <Route path="/doctor" element={<DoctorDashboard />} />
-              <Route path="/doctor/schedule" element={<ComingSoon title="My schedule" />} />
-              <Route path="/doctor/patients" element={<ComingSoon title="Patients I've seen" />} />
-              <Route path="/doctor/notes" element={<ComingSoon title="Consult notes" />} />
+              <Route path="/doctor/schedule" element={<DoctorSchedule />} />
+              <Route path="/doctor/patients" element={<DoctorPatients />} />
+              <Route path="/doctor/notes" element={<ConsultNotes />} />
             </Route>
 
             {/* Admin */}
             <Route element={<AppShell allowedRoles={['admin']} title="Operations" subtitle="Hospital pulse" />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/headcount" element={<Headcount />} />
-              <Route path="/admin/staff" element={<ComingSoon title="Staff directory" />} />
-              <Route path="/admin/departments" element={<ComingSoon title="Departments" />} />
-              <Route path="/admin/audit" element={<ComingSoon title="Audit logs" />} />
+              <Route path="/admin/staff" element={<Staff />} />
+              <Route path="/admin/departments" element={<Departments />} />
+              <Route path="/admin/audit" element={<AuditLogs />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/login" replace />} />
