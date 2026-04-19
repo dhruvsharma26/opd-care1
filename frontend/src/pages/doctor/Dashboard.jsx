@@ -4,10 +4,14 @@ import {
   Clock,
   FileText,
   PlayCircle,
+  ShieldCheck,
+  ShieldX,
   UserRound,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
+import useDoctorAuthorization from "../../hooks/useDoctorAuthorization";
 import { appointmentAPI } from "../../services/api";
 
 export default function DoctorDashboard() {
@@ -15,6 +19,8 @@ export default function DoctorDashboard() {
   const [appointments, setAppointments] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { authorizationStatus, reviewerNote, isApproved } =
+    useDoctorAuthorization(user?.doctorId, { refreshMs: 10000 });
 
   useEffect(() => {
     const load = async () => {
@@ -46,6 +52,11 @@ export default function DoctorDashboard() {
   const activeAppointment = appointments.find((entry) => entry._id === selectedId);
 
   const updateStatus = async (appointmentId, status) => {
+    if (!isApproved) {
+      toast.error("Appointment actions unlock after admin approves your credentials");
+      return;
+    }
+
     try {
       const response = await appointmentAPI.update(appointmentId, { status });
       setAppointments((current) =>
@@ -55,7 +66,7 @@ export default function DoctorDashboard() {
       );
       toast.success(`Appointment marked ${status}`);
     } catch (err) {
-      toast.error("Failed to update appointment");
+      toast.error(err.response?.data?.error || "Failed to update appointment");
     }
   };
 
@@ -72,6 +83,52 @@ export default function DoctorDashboard() {
           <p className="text-sm text-muted-foreground mt-1">
             Appointments on this page are pulled from MongoDB for your doctor ID.
           </p>
+        </div>
+      </section>
+
+      <section
+        className={`card-elev p-5 border ${
+          isApproved
+            ? "border-sage/30 bg-sage/10"
+            : authorizationStatus === "rejected"
+              ? "border-destructive/20 bg-destructive/10"
+              : "border-accent/30 bg-accent/10"
+        }`}
+      >
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-background/70 grid place-items-center shrink-0">
+              {isApproved ? (
+                <ShieldCheck className="w-5 h-5 text-sage" />
+              ) : (
+                <ShieldX
+                  className={`w-5 h-5 ${
+                    authorizationStatus === "rejected"
+                      ? "text-destructive"
+                      : "text-accent"
+                  }`}
+                />
+              )}
+            </div>
+            <div>
+              <p className="font-display text-2xl">
+                {isApproved ? "Authorization approved" : "Authorization pending"}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+                {isApproved
+                  ? "Your profile is verified. Queue actions are active."
+                  : "You can review appointments, but confirm and complete actions stay locked until admin verification finishes."}
+              </p>
+              {reviewerNote && (
+                <p className="text-xs mt-2 text-muted-foreground">
+                  Admin note: {reviewerNote}
+                </p>
+              )}
+            </div>
+          </div>
+          <Link to="/doctor/authorization" className="btn-ghost text-sm">
+            Open Authorization
+          </Link>
         </div>
       </section>
 
@@ -190,18 +247,26 @@ export default function DoctorDashboard() {
               <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => updateStatus(activeAppointment._id, "confirmed")}
-                  className="btn-primary text-xs py-2 px-2 flex items-center justify-center gap-1"
+                  disabled={!isApproved}
+                  className="btn-primary text-xs py-2 px-2 flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" /> Confirm
                 </button>
                 <button
                   onClick={() => updateStatus(activeAppointment._id, "completed")}
-                  className="btn-accent text-xs py-2 px-2 flex items-center justify-center gap-1"
+                  disabled={!isApproved}
+                  className="btn-accent text-xs py-2 px-2 flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <PlayCircle className="w-3.5 h-3.5" /> Complete
                 </button>
                 <button
-                  onClick={() => toast("Open Consult Notes to save diagnosis and notes")}
+                  onClick={() =>
+                    isApproved
+                      ? toast("Open Consult Notes to save diagnosis and notes")
+                      : toast.error(
+                          "Consult actions unlock after admin approval",
+                        )
+                  }
                   className="btn-ghost text-xs py-2 px-2 flex items-center justify-center gap-1"
                 >
                   <FileText className="w-3.5 h-3.5" /> Notes

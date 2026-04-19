@@ -17,14 +17,14 @@ const SEARCH_INDEX = {
   doctor: [
     { label: "Queue", path: "/doctor" },
     { label: "Schedule", path: "/doctor/schedule" },
+    { label: "Authorization", path: "/doctor/authorization" },
     { label: "Patients seen", path: "/doctor/patients" },
     { label: "Consult notes", path: "/doctor/notes" },
   ],
   admin: [
     { label: "Operations overview", path: "/admin" },
+    { label: "Authorize clinicians", path: "/admin/authorize" },
     { label: "Live headcount", path: "/admin/headcount" },
-    { label: "Staff directory", path: "/admin/staff" },
-    { label: "Departments", path: "/admin/departments" },
     { label: "Audit logs", path: "/admin/audit" },
   ],
 };

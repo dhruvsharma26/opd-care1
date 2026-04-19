@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Save } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
+import useDoctorAuthorization from "../../hooks/useDoctorAuthorization";
 import { appointmentAPI } from "../../services/api";
 
 export default function ConsultNotes() {
   const { user } = useAuth();
+  const { isApproved } = useDoctorAuthorization(user?.doctorId, { refreshMs: 10000 });
   const [appointments, setAppointments] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [draft, setDraft] = useState({
@@ -53,6 +55,10 @@ export default function ConsultNotes() {
 
   const save = async () => {
     if (!selected) return;
+    if (!isApproved) {
+      toast.error("Consult notes unlock after admin approval");
+      return;
+    }
 
     try {
       const response = await appointmentAPI.update(selected._id, {
@@ -169,7 +175,11 @@ export default function ConsultNotes() {
               />
 
               <div className="flex justify-end">
-                <button onClick={save} className="btn-primary text-sm flex items-center gap-2">
+                <button
+                  onClick={save}
+                  disabled={!isApproved}
+                  className="btn-primary text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <Save className="w-4 h-4" /> Save note
                 </button>
               </div>

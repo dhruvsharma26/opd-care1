@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { authAPI } from "../services/api";
 
 const AuthContext = createContext(null);
@@ -20,6 +20,12 @@ const normalizeUser = (userData) => {
     latestComplaint:
       userData.patient?.latestComplaint ?? userData.latestComplaint ?? "",
     specialty: userData.doctor?.specialty ?? userData.specialty ?? "",
+    authorizationStatus:
+      userData.doctor?.authorizationStatus
+      ?? userData.authorizationStatus
+      ?? "pending",
+    reviewerNote:
+      userData.doctor?.reviewerNote ?? userData.reviewerNote ?? "",
   };
 };
 
@@ -80,9 +86,9 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const updateUser = (updates) => {
+  const updateUser = useCallback((updates) => {
     setUser((current) => normalizeUser({ ...current, ...updates }));
-  };
+  }, []);
 
   const signOut = () => {
     setUser(null);

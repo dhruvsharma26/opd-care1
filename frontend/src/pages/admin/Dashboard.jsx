@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
-  Bell,
   Calendar,
   Download,
   FileText,
@@ -22,13 +21,15 @@ import {
   LineChart,
   Line,
 } from "recharts";
-import { DEPARTMENT_LOAD, FOOTFALL_BY_HOUR } from "../../lib/mockData";
-import { appointmentAPI, doctorAPI, patientAPI } from "../../services/api";
+import { aiAPI, appointmentAPI, doctorAPI, patientAPI } from "../../services/api";
+import { buildLiveActivityLogs, downloadSimplePdf } from "../../lib/adminOps";
 
 const logTone = {
   register: "bg-primary/10 text-primary",
   consult: "bg-sage/20 text-sage",
   book: "bg-accent/15 text-accent",
+  doctor: "bg-primary/10 text-primary",
+  authorize: "bg-accent/15 text-accent",
   system: "bg-[hsl(var(--sand))]/25 text-[hsl(var(--sand))]",
 };
 
@@ -58,22 +59,27 @@ export default function AdminDashboard() {
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [appointments, setAppointments] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsSource, setAnalyticsSource] = useState("");
 
   useEffect(() => {
     let mounted = true;
 
     const fetchLiveData = async () => {
       try {
-        const [patientsRes, doctorsRes, appointmentsRes] = await Promise.all([
+        const [patientsRes, doctorsRes, appointmentsRes, analyticsRes] = await Promise.all([
           patientAPI.getAll(),
           doctorAPI.getAll(),
           appointmentAPI.getAll(),
+          aiAPI.getAdminDashboardAnalytics(),
         ]);
 
         if (!mounted) return;
         setPatients(patientsRes.data || []);
         setDoctors(doctorsRes.data || []);
         setAppointments(appointmentsRes.data || []);
+        setAnalytics(analyticsRes.data?.analytics || null);
+        setAnalyticsSource(analyticsRes.data?.source || "");
       } catch (error) {
         console.error("Failed to load admin live data", error);
       }
@@ -95,56 +101,61 @@ export default function AdminDashboard() {
     day: "numeric",
   });
 
-  const liveActivityLogs = useMemo(() => {
-    const patientLogs = patients.slice(0, 5).map((patient, index) => ({
-      id: `patient-${patient._id || index}`,
-      type: "register",
-      timestamp: new Date(patient.createdAt || Date.now()).toLocaleString("en-IN"),
-      action: `Patient profile created - ${patient.name || "Unnamed patient"}`,
-      user: patient.email || patient.phone || "Patient",
-      sortTime: new Date(patient.createdAt || 0).getTime(),
-    }));
+  const liveActivityLogs = useMemo(
+    () => buildLiveActivityLogs({ patients, doctors, appointments }).slice(0, 10),
+    [appointments, doctors, patients],
+  );
 
-    const appointmentLogs = appointments.slice(0, 8).map((appointment, index) => ({
-      id: `appointment-${appointment._id || index}`,
-      type: appointment.status === "completed" ? "consult" : "book",
-      timestamp: new Date(appointment.createdAt || Date.now()).toLocaleString("en-IN"),
-      action:
-        appointment.status === "completed"
-          ? `Consultation completed - ${appointment.patientName}`
-          : `Appointment booked - ${appointment.patientName} with ${appointment.doctorName}`,
-      user: appointment.doctorName || "System",
-      sortTime: new Date(appointment.createdAt || 0).getTime(),
-    }));
+  const exportDailyReport = () => {
+    const lines = [
+      "OPD Care Daily Operations Report",
+      `Generated: ${new Date().toLocaleString("en-IN")}`,
+      `Patients today: ${patients.length}`,
+      `Doctors online: ${doctors.filter((doctor) => doctor.availableToday).length}`,
+      `Pending cases: ${appointments.filter((appointment) => appointment.status !== "completed").length}`,
+      `Average wait (AI): ${analytics?.overview?.avgWaitMinutes ?? 0} minutes`,
+      `OPD headcount (AI): ${analytics?.overview?.opdHeadcount ?? patients.length}`,
+      `Bottleneck department: ${analytics?.overview?.bottleneckDepartment || "General Medicine"}`,
+      "",
+      "Department occupancy",
+      ...(analytics?.departmentLoad || []).map(
+        (entry) => `${entry.name}: ${entry.patients} patients / capacity ${entry.capacity}`,
+      ),
+      "",
+      "Hourly footfall",
+      ...(analytics?.footfallByHour || []).map(
+        (entry) => `${entry.h}: ${entry.count} arrivals`,
+      ),
+      "",
+      "AI recommendations",
+      ...((analytics?.recommendations || []).map((entry) => `- ${entry}`)),
+      "",
+      "Recent live activity",
+      ...liveActivityLogs.flatMap((entry) => [
+        `${entry.timestamp} | ${entry.user}`,
+        entry.action,
+      ]),
+    ];
 
-    const systemLog = {
-      id: "system-headcount",
-      type: "system",
-      timestamp: new Date().toLocaleString("en-IN"),
-      action: "Live dashboard refreshed from patient, doctor, and appointment data",
-      user: "System",
-      sortTime: Date.now(),
-    };
-
-    return [systemLog, ...patientLogs, ...appointmentLogs]
-      .sort((a, b) => b.sortTime - a.sortTime)
-      .slice(0, 10);
-  }, [appointments, patients]);
-
-  const onNotify = () => toast.success("Notice broadcast to on-shift staff");
-  const onExport = () =>
-    toast.success("Daily OPD report generated", {
-      description: "Live snapshot exported",
-    });
-  const onClearLogs = () =>
-    toast("Activity stream is now driven by live records and refreshes automatically");
+    downloadSimplePdf(
+      `opd-daily-report-${new Date().toISOString().slice(0, 10)}.pdf`,
+      lines,
+    );
+    toast.success("Daily report PDF downloaded");
+  };
 
   const patientsToday = patients.length;
   const doctorsOnline = doctors.filter((doctor) => doctor.availableToday).length;
   const pendingCases = appointments.filter(
     (appointment) => appointment.status !== "completed",
   ).length;
-  const headcountPlaceholder = 187;
+  const averageWait = analytics?.overview?.avgWaitMinutes ?? "9.4";
+  const aiHeadcount = analytics?.overview?.opdHeadcount ?? patientsToday;
+  const departmentLoad = analytics?.departmentLoad || [];
+  const footfallByHour = analytics?.footfallByHour || [];
+  const recommendations = analytics?.recommendations || [];
+  const bottleneckDepartment =
+    analytics?.overview?.bottleneckDepartment || "General Medicine";
 
   return (
     <div className="space-y-6 animate-enter">
@@ -159,14 +170,11 @@ export default function AdminDashboard() {
               OPD running <span className="italic text-sage">smoothly.</span>
             </h2>
             <p className="text-muted-foreground mt-2 text-sm">
-              Admin activity now refreshes from real patient and appointment records.
+              Admin activity now refreshes from real patient, doctor, and appointment records.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={onNotify} className="btn-ghost text-sm flex items-center gap-2">
-              <Bell className="w-3.5 h-3.5" /> Notify staff
-            </button>
-            <button onClick={onExport} className="btn-primary text-sm flex items-center gap-2">
+            <button onClick={exportDailyReport} className="btn-primary text-sm flex items-center gap-2">
               <Download className="w-3.5 h-3.5" /> Export daily report
             </button>
           </div>
@@ -190,8 +198,8 @@ export default function AdminDashboard() {
         <Kpi
           icon={Activity}
           label="Avg. wait"
-          value="9.4m"
-          note="placeholder"
+          value={`${averageWait}m`}
+          note={`AI estimates pressure around ${bottleneckDepartment}`}
           tone="bg-sage/20 text-sage"
         />
         <Kpi
@@ -203,8 +211,8 @@ export default function AdminDashboard() {
         <Kpi
           icon={Users}
           label="OPD headcount"
-          value={headcountPlaceholder}
-          note="static for now"
+          value={aiHeadcount}
+          note={analyticsSource ? `${analyticsSource} operations model` : "live operations model"}
           tone="bg-primary/10 text-primary"
         />
       </section>
@@ -222,7 +230,7 @@ export default function AdminDashboard() {
           </div>
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={DEPARTMENT_LOAD} margin={{ left: -10, top: 10 }} barGap={6}>
+              <BarChart data={departmentLoad} margin={{ left: -10, top: 10 }} barGap={6}>
                 <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="2 4" vertical={false} />
                 <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
@@ -252,7 +260,7 @@ export default function AdminDashboard() {
           </div>
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={FOOTFALL_BY_HOUR} margin={{ left: -15, top: 10 }}>
+              <LineChart data={footfallByHour} margin={{ left: -15, top: 10 }}>
                 <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="2 4" vertical={false} />
                 <XAxis dataKey="h" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
@@ -284,12 +292,9 @@ export default function AdminDashboard() {
             <div>
               <h3 className="font-display text-xl">Activity stream</h3>
               <p className="text-xs text-muted-foreground">
-                Auto-refreshing from real patients and appointments
+                Auto-refreshing from real patient, doctor, and appointment records
               </p>
             </div>
-            <button className="text-xs text-muted-foreground link-underline" onClick={onClearLogs}>
-              Info
-            </button>
           </div>
           <ul className="space-y-2">
             {liveActivityLogs.map((log) => (
@@ -311,33 +316,25 @@ export default function AdminDashboard() {
           </ul>
         </div>
 
-        <div className="space-y-4">
-          <div className="card-elev p-6">
-            <h3 className="font-display text-xl mb-4">System controls</h3>
-            <div className="grid grid-cols-1 gap-2">
-              <button className="w-full text-sm py-2.5 rounded-xl border bg-primary text-primary-foreground border-primary hover:opacity-90 text-left px-4">
-                Generate daily report
-              </button>
-              <button className="w-full text-sm py-2.5 rounded-xl border bg-accent/10 text-accent border-accent/30 hover:bg-accent/15 text-left px-4">
-                Export patient CSV
-              </button>
-              <button className="w-full text-sm py-2.5 rounded-xl border bg-sage/15 text-sage border-sage/30 hover:bg-sage/20 text-left px-4">
-                Broadcast notice
-              </button>
-              <button className="w-full text-sm py-2.5 rounded-xl border bg-card border-border hover:border-ring/60 text-foreground text-left px-4">
-                Clear audit logs
-              </button>
-            </div>
+        <div className="card-elev p-6 bg-gradient-to-br from-accent/10 to-sage/10 border-accent/20">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="w-4 h-4 text-accent" />
+            <p className="font-medium text-sm">Ops insight</p>
           </div>
-
-          <div className="card-elev p-6 bg-gradient-to-br from-accent/10 to-sage/10 border-accent/20">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-4 h-4 text-accent" />
-              <p className="font-medium text-sm">Ops insight</p>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              OPD headcount is shown as a static placeholder for now. We can wire
-              live headcount sensors or ward occupancy data into this next.
+          <div className="space-y-2">
+            {recommendations.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                AI recommendations will appear here once live ops analysis is ready.
+              </p>
+            ) : (
+              recommendations.map((item) => (
+                <p key={item} className="text-xs text-muted-foreground">
+                  {item}
+                </p>
+              ))
+            )}
+            <p className="text-[11px] text-muted-foreground/80">
+              Source: {analyticsSource || "live"}
             </p>
           </div>
         </div>

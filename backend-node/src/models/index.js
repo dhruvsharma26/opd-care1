@@ -48,6 +48,115 @@ const patientReportSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const doctorAuthorizationDocumentSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    type: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    size: {
+      type: Number,
+      default: 0,
+    },
+    dataUrl: {
+      type: String,
+      required: true,
+    },
+    uploadedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: true },
+);
+
+const doctorAuthorizationSchema = new mongoose.Schema(
+  {
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+    },
+    fullName: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    specialty: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    highestQualification: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    licenseNumber: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    councilName: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    registrationYear: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    yearsOfExperience: {
+      type: Number,
+      default: 0,
+    },
+    institutionName: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    governmentIdNumber: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    practiceAddress: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    bio: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    reviewerNote: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    submittedAt: Date,
+    reviewedAt: Date,
+    reviewedBy: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    documents: {
+      type: [doctorAuthorizationDocumentSchema],
+      default: [],
+    },
+  },
+  { _id: false },
+);
+
 const appointmentSchema = new mongoose.Schema(
   {
     patientId: {
@@ -233,6 +342,10 @@ const doctorSchema = new mongoose.Schema(
     nextSlot: {
       type: String,
       default: "11:00 AM",
+    },
+    authorization: {
+      type: doctorAuthorizationSchema,
+      default: () => ({}),
     },
   },
   {

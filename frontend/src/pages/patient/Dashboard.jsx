@@ -2,33 +2,12 @@ import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
-  CalendarCheck2, HeartPulse, Pill, FileText, ArrowRight,
-  Activity, Droplets, Wind, Stethoscope, MapPin, Clock3
+  CalendarCheck2, Pill, FileText, ArrowRight,
+  Sparkles, Stethoscope, MapPin, Clock3,
 } from 'lucide-react';
-import {
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
-} from 'recharts';
 import { useAuth } from '../../context/AuthContext';
 import { appointmentAPI, patientAPI } from '../../services/api';
-import { VITALS_TREND, DOCTORS } from '../../lib/mockData';
-
-function Stat({ icon: Icon, label, value, unit, tone = 'primary' }) {
-  const toneMap = {
-    primary: 'text-primary bg-primary/10',
-    accent: 'text-accent bg-accent/10',
-    sage: 'text-sage bg-sage/10',
-    sand: 'text-[hsl(var(--sand))] bg-[hsl(var(--sand))]/15',
-  };
-  return (
-    <div className="card-elev p-5">
-      <div className={`w-10 h-10 rounded-xl grid place-items-center mb-3 ${toneMap[tone]}`}>
-        <Icon className="w-5 h-5" />
-      </div>
-      <p className="text-xs text-muted-foreground uppercase tracking-wider">{label}</p>
-      <p className="font-display text-3xl mt-1">{value}<span className="text-sm text-muted-foreground font-sans ml-1">{unit}</span></p>
-    </div>
-  );
-}
+import { DOCTORS } from '../../lib/mockData';
 
 export default function PatientDashboard() {
   const { user } = useAuth();
@@ -39,13 +18,11 @@ export default function PatientDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch patient details
         if (user?.patientId) {
           const patientRes = await patientAPI.getById(user.patientId);
           setPatientDetails(patientRes.data);
         }
 
-        // Fetch appointments for this patient
         if (user?.patientId) {
           const appointmentsRes = await appointmentAPI.getPatientAppointments(user.patientId);
           setAppointments(appointmentsRes.data || []);
@@ -66,10 +43,21 @@ export default function PatientDashboard() {
   }, [user]);
 
   const next = appointments.find((a) => a.status === 'confirmed' || a.status === 'upcoming');
+  const scheduledAppointments = appointments.filter(
+    (a) => a.status === 'confirmed' || a.status === 'upcoming',
+  );
+  const recentAppointments = appointments.slice(0, 5);
+  const healthRecommendations = [
+    patientDetails?.latestComplaint
+      ? `Keep tracking symptoms like "${patientDetails.latestComplaint}" and share any change in duration or intensity during your consult.`
+      : 'If you notice new symptoms, describe them early so the care team can guide you sooner.',
+    'Aim for regular sleep, enough water, and light movement every day to support general health.',
+    'Choose balanced meals, reduce overly oily or sugary foods, and try to keep meal timing consistent.',
+    'If fever, breathing trouble, chest pain, or sudden weakness gets worse, seek urgent care instead of waiting.',
+  ];
 
   return (
     <div className="space-y-8 animate-enter">
-      {/* Hero */}
       <section className="relative overflow-hidden rounded-3xl p-8 border border-border bg-gradient-to-br from-primary/10 via-accent/10 to-sage/10">
         <div className="absolute -top-20 -right-16 w-80 h-80 rounded-full bg-accent/15 blur-3xl animate-drift" />
         <div className="relative flex flex-col lg:flex-row lg:items-end gap-6 justify-between">
@@ -77,9 +65,13 @@ export default function PatientDashboard() {
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Good morning</p>
             <h2 className="font-display text-4xl sm:text-5xl leading-tight mt-1">
               {user?.name?.split(' ')[0] || 'Friend'},<br />
-              <span className="italic">let's take it easy today.</span>
+              <span className="italic">let&apos;s take it easy today.</span>
             </h2>
-            <p className="text-muted-foreground mt-3 max-w-md text-sm">Your last vitals were gentle. {next ? 'You have one confirmed consultation this morning.' : 'No upcoming appointments.'}</p>
+            <p className="text-muted-foreground mt-3 max-w-md text-sm">
+              {next
+                ? `You have ${scheduledAppointments.length} scheduled appointment${scheduledAppointments.length > 1 ? 's' : ''} coming up.`
+                : 'No upcoming appointments right now.'}
+            </p>
           </div>
 
           {next && (
@@ -103,52 +95,57 @@ export default function PatientDashboard() {
         </div>
       </section>
 
-      {/* Vital stats */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Stat icon={HeartPulse} label="Heart rate" value="73" unit="bpm" tone="accent" />
-        <Stat icon={Activity} label="Blood pressure" value="120/78" unit="mmHg" tone="primary" />
-        <Stat icon={Droplets} label="SpO₂" value="98" unit="%" tone="sage" />
-        <Stat icon={Wind} label="Respiration" value="16" unit="bpm" tone="sand" />
-      </section>
-
-      {/* Chart + Appts */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 card-elev p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-display text-xl">Vitals · last 7 days</h3>
-              <p className="text-xs text-muted-foreground">Auto-captured from your wearable</p>
+              <h3 className="font-display text-xl">Scheduled appointments</h3>
+              <p className="text-xs text-muted-foreground">Your confirmed and upcoming visits at a glance</p>
             </div>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="chip"><span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--chart-1))]" /> BP</span>
-              <span className="chip"><span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--chart-2))]" /> HR</span>
+            <Link to="/patient/appointments" className="text-xs text-accent flex items-center gap-1 link-underline">
+              Manage schedule <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+
+          {loading ? (
+            <p className="text-xs text-muted-foreground">Loading schedule...</p>
+          ) : scheduledAppointments.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted-foreground">
+              No scheduled appointments yet. Once you book a consult, it will appear here.
             </div>
-          </div>
-          <div className="h-[260px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={VITALS_TREND} margin={{ left: -20, right: 10, top: 10 }}>
-                <defs>
-                  <linearGradient id="g1" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.45} />
-                    <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="g2" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--chart-2))" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="2 4" vertical={false} />
-                <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 12, fontSize: 12 }}
-                  labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
-                />
-                <Area type="monotone" dataKey="bp" stroke="hsl(var(--chart-1))" strokeWidth={2} fill="url(#g1)" />
-                <Area type="monotone" dataKey="hr" stroke="hsl(var(--chart-2))" strokeWidth={2} fill="url(#g2)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          ) : (
+            <div className="space-y-3">
+              {scheduledAppointments.map((appointment) => (
+                <div
+                  key={appointment._id || appointment.id}
+                  className="rounded-2xl border border-border p-4 flex flex-col md:flex-row md:items-center gap-4"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary grid place-items-center shrink-0">
+                    <CalendarCheck2 className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{appointment.doctorName || 'Doctor assigned'}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {appointment.specialty || 'General'} · {appointment.date || 'Date pending'} · {appointment.time || 'Time pending'}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {appointment.room || 'Room will be shared before the visit'}
+                    </p>
+                    {appointment.complaint && (
+                      <p className="text-sm mt-2">{appointment.complaint}</p>
+                    )}
+                  </div>
+                  <span className={`chip text-[10px] uppercase tracking-wider ${
+                    appointment.status === 'confirmed'
+                      ? 'bg-accent/15 text-accent border-accent/30'
+                      : 'bg-primary/10 text-primary border-primary/20'
+                  }`}>
+                    {appointment.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="card-elev p-6">
@@ -158,11 +155,11 @@ export default function PatientDashboard() {
           </div>
           {loading ? (
             <p className="text-xs text-muted-foreground">Loading...</p>
-          ) : appointments.length === 0 ? (
+          ) : recentAppointments.length === 0 ? (
             <p className="text-xs text-muted-foreground">No appointments yet. <Link to="/patient/appointments" className="text-accent">Book one</Link></p>
           ) : (
             <ul className="space-y-3" data-testid="appointments-list">
-              {appointments.slice(0, 5).map((a) => (
+              {recentAppointments.map((a) => (
                 <li key={a._id} className="flex items-start gap-3 p-3 rounded-xl border border-border hover:border-ring/60 transition">
                   <div className={`w-9 h-9 shrink-0 rounded-lg grid place-items-center text-xs font-semibold ${
                     a.status === 'confirmed' ? 'bg-accent/15 text-accent'
@@ -186,6 +183,25 @@ export default function PatientDashboard() {
           )}
         </div>
       </section>
+
+      <section className="card-elev p-6 bg-gradient-to-br from-accent/10 via-primary/5 to-sage/10 border-accent/20">
+        <div className="flex items-center gap-2 mb-4">
+          <Sparkles className="w-4 h-4 text-accent" />
+          <div>
+            <h3 className="font-display text-xl">AI wellness recommendations</h3>
+            <p className="text-xs text-muted-foreground">General health guidance for a better daily routine</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {healthRecommendations.map((item) => (
+            <div key={item} className="rounded-2xl bg-background/70 border border-border p-4">
+              <p className="text-sm">{item}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-5">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="font-display text-xl">Recommended for you</h3>
@@ -225,7 +241,6 @@ export default function PatientDashboard() {
         </div>
       </section>
 
-      {/* Quick actions */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
           { icon: Stethoscope, title: 'Describe symptoms', hint: 'Voice or text', to: '/patient/register', testid: 'qa-register' },

@@ -9,6 +9,22 @@ const doctorDefaults = {
   fee: 500,
   availableToday: true,
   nextSlot: "11:00 AM",
+  authorization: {
+    status: "pending",
+    fullName: "",
+    specialty: "General Physician",
+    highestQualification: "",
+    licenseNumber: "",
+    councilName: "",
+    registrationYear: "",
+    yearsOfExperience: 0,
+    institutionName: "",
+    governmentIdNumber: "",
+    practiceAddress: "",
+    bio: "",
+    reviewerNote: "",
+    documents: [],
+  },
 };
 
 const createLicenseNumber = (email) =>
@@ -50,6 +66,8 @@ const buildUserPayload = async (userId) => {
           fee: user.doctorId.fee ?? 0,
           availableToday: Boolean(user.doctorId.availableToday),
           nextSlot: user.doctorId.nextSlot || "",
+          authorizationStatus: user.doctorId.authorization?.status || "pending",
+          reviewerNote: user.doctorId.authorization?.reviewerNote || "",
         }
       : null,
   };

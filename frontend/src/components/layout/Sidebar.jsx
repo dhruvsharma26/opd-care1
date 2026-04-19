@@ -1,8 +1,7 @@
 import { NavLink } from 'react-router-dom';
-import { toast } from 'sonner';
 import {
   LayoutDashboard, Calendar, Stethoscope, Users2, ClipboardList, Activity,
-  FileText, ShieldCheck, UserCircle2, Headphones, Gauge, Building2, HeartPulse
+  FileText, ShieldCheck, Gauge, HeartPulse,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -16,14 +15,14 @@ const MENUS = {
   doctor: [
     { to: '/doctor', label: 'Queue', icon: LayoutDashboard, end: true },
     { to: '/doctor/schedule', label: 'Schedule', icon: Calendar },
+    { to: '/doctor/authorization', label: 'Authorization', icon: ShieldCheck },
     { to: '/doctor/patients', label: 'Patients', icon: Users2 },
     { to: '/doctor/notes', label: 'Consult Notes', icon: FileText },
   ],
   admin: [
     { to: '/admin', label: 'Overview', icon: Gauge, end: true },
+    { to: '/admin/authorize', label: 'Authorize', icon: ShieldCheck },
     { to: '/admin/headcount', label: 'Headcount', icon: Activity },
-    { to: '/admin/staff', label: 'Staff', icon: UserCircle2 },
-    { to: '/admin/departments', label: 'Departments', icon: Building2 },
     { to: '/admin/audit', label: 'Audit Logs', icon: ShieldCheck },
   ],
 };
@@ -73,18 +72,6 @@ export default function Sidebar({ role }) {
           </NavLink>
         ))}
       </nav>
-
-      <div className="m-3 p-4 rounded-2xl bg-gradient-to-br from-primary/10 via-accent/10 to-sage/10 border border-border relative overflow-hidden">
-        <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-accent/20 blur-2xl animate-drift" />
-        <Headphones className="w-5 h-5 text-accent mb-2" />
-        <p className="font-display text-base leading-snug mb-1">24×7 Tele-triage</p>
-        <p className="text-xs text-muted-foreground mb-3">Stuck in queue? Talk to our AI nurse.</p>
-        <button
-          onClick={() => toast.success('Connecting you to an AI nurse…', { description: 'Estimated wait: <30s' })}
-          className="btn-accent text-xs py-1.5 px-3"
-          data-testid="tele-triage-btn"
-        >Start call</button>
-      </div>
     </aside>
   );
 }

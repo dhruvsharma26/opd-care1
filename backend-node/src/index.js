@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth.js";
 import patientRoutes from "./routes/patient.js";
 import doctorRoutes from "./routes/doctor.js";
 import appointmentRoutes from "./routes/appointment.js";
+import aiRoutes from "./routes/ai.js";
 import { errorHandler } from "./middleware/auth.js";
 import { seedDemoData } from "./utils/seed.js";
 
@@ -21,8 +22,8 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.get("/health", (req, res) => {
   res.json({ status: "Server is running", timestamp: new Date() });
@@ -32,6 +33,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/patients", patientRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/appointments", appointmentRoutes);
+app.use("/api/ai", aiRoutes);
 
 const apiInfo = {
   message: "OPD Care Backend API",
@@ -41,6 +43,7 @@ const apiInfo = {
     patients: "/api/patients",
     doctors: "/api/doctors",
     appointments: "/api/appointments",
+    ai: "/api/ai",
   },
 };
 

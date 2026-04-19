@@ -51,6 +51,10 @@ export const doctorAPI = {
   create: (data) => apiClient.post("/doctors", data),
   getAll: () => apiClient.get("/doctors"),
   getById: (id) => apiClient.get(`/doctors/${id}`),
+  submitAuthorization: (id, data) =>
+    apiClient.patch(`/doctors/${id}/authorization`, data),
+  reviewAuthorization: (id, data) =>
+    apiClient.patch(`/doctors/${id}/authorization/review`, data),
 };
 
 export const appointmentAPI = {
@@ -62,6 +66,11 @@ export const appointmentAPI = {
   getPatientAppointments: (patientId) =>
     apiClient.get(`/appointments/patient/${patientId}`),
   update: (id, data) => apiClient.patch(`/appointments/${id}`, data),
+};
+
+export const aiAPI = {
+  analyzeComplaint: (data) => apiClient.post("/ai/complaint-analysis", data),
+  getAdminDashboardAnalytics: () => apiClient.get("/ai/admin-dashboard"),
 };
 
 export default apiClient;

@@ -13,11 +13,11 @@ import DoctorDashboard from './pages/doctor/Dashboard';
 import DoctorSchedule from './pages/doctor/Schedule';
 import DoctorPatients from './pages/doctor/Patients';
 import ConsultNotes from './pages/doctor/ConsultNotes';
+import DoctorAuthorization from './pages/doctor/Authorization';
 import AdminDashboard from './pages/admin/Dashboard';
 import Headcount from './pages/admin/Headcount';
-import Staff from './pages/admin/Staff';
-import Departments from './pages/admin/Departments';
 import AuditLogs from './pages/admin/AuditLogs';
+import AdminAuthorize from './pages/admin/Authorize';
 
 function RoleRedirect() {
   return <Navigate to="/login" replace />;
@@ -57,6 +57,7 @@ export default function App() {
             <Route element={<AppShell allowedRoles={['doctor']} title="Clinician console" subtitle="Queue & consults" />}>
               <Route path="/doctor" element={<DoctorDashboard />} />
               <Route path="/doctor/schedule" element={<DoctorSchedule />} />
+              <Route path="/doctor/authorization" element={<DoctorAuthorization />} />
               <Route path="/doctor/patients" element={<DoctorPatients />} />
               <Route path="/doctor/notes" element={<ConsultNotes />} />
             </Route>
@@ -64,9 +65,8 @@ export default function App() {
             {/* Admin */}
             <Route element={<AppShell allowedRoles={['admin']} title="Operations" subtitle="Hospital pulse" />}>
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/authorize" element={<AdminAuthorize />} />
               <Route path="/admin/headcount" element={<Headcount />} />
-              <Route path="/admin/staff" element={<Staff />} />
-              <Route path="/admin/departments" element={<Departments />} />
               <Route path="/admin/audit" element={<AuditLogs />} />
             </Route>
 

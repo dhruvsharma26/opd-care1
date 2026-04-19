@@ -156,8 +156,43 @@ export const getPatientAppointments = async (req, res, next) => {
 
 export const updateAppointment = async (req, res, next) => {
   try {
+    const actorId = req.user?.userId;
+    if (!actorId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const actor = await User.findById(actorId);
+    if (!actor) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
     const { id } = req.params;
     const { status, report } = req.body;
+    const existingAppointment = await Appointment.findById(id);
+
+    if (!existingAppointment) {
+      return res.status(404).json({ error: "Appointment not found" });
+    }
+
+    if (actor.role === "doctor") {
+      if (
+        !actor.doctorId
+        || actor.doctorId.toString() !== existingAppointment.doctorId.toString()
+      ) {
+        return res.status(403).json({ error: "You can only update your own appointments" });
+      }
+
+      const doctor = await Doctor.findById(actor.doctorId);
+      if (!doctor) {
+        return res.status(404).json({ error: "Doctor profile not found" });
+      }
+
+      if (doctor.authorization?.status !== "approved") {
+        return res.status(403).json({
+          error: "Doctor approval is pending. Appointment actions unlock after admin approval.",
+        });
+      }
+    }
 
     const updates = {};
     if (status) {
@@ -171,10 +206,6 @@ export const updateAppointment = async (req, res, next) => {
       new: true,
       runValidators: true,
     });
-
-    if (!appointment) {
-      return res.status(404).json({ error: "Appointment not found" });
-    }
 
     const savedAppointment = await populateAppointment(
       Appointment.findById(appointment._id),
