@@ -7,6 +7,8 @@ import patientRoutes from "./routes/patient.js";
 import doctorRoutes from "./routes/doctor.js";
 import appointmentRoutes from "./routes/appointment.js";
 import aiRoutes from "./routes/ai.js";
+import opdHeadCountRoutes from "./routes/headcount.js"
+import "./controllers/headcountwebsocket.js";
 import { errorHandler } from "./middleware/auth.js";
 import { seedDemoData } from "./utils/seed.js";
 
@@ -34,6 +36,7 @@ app.use("/api/patients", patientRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api", opdHeadCountRoutes);
 
 const apiInfo = {
   message: "OPD Care Backend API",

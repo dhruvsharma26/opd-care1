@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, Calendar, Stethoscope, Users2, ClipboardList, Activity,
+  LayoutDashboard, Calendar, Stethoscope, Users2, ClipboardList,
   FileText, ShieldCheck, Gauge, HeartPulse,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -22,7 +22,6 @@ const MENUS = {
   admin: [
     { to: '/admin', label: 'Overview', icon: Gauge, end: true },
     { to: '/admin/authorize', label: 'Authorize', icon: ShieldCheck },
-    { to: '/admin/headcount', label: 'Headcount', icon: Activity },
     { to: '/admin/audit', label: 'Audit Logs', icon: ShieldCheck },
   ],
 };

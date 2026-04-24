@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Activity,
   Calendar,
   Download,
   FileText,
@@ -12,8 +11,6 @@ import {
 import { toast } from "sonner";
 import {
   ResponsiveContainer,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   Tooltip,
@@ -21,7 +18,13 @@ import {
   LineChart,
   Line,
 } from "recharts";
-import { aiAPI, appointmentAPI, doctorAPI, patientAPI } from "../../services/api";
+import {
+  aiAPI,
+  appointmentAPI,
+  doctorAPI,
+  headcountAPI,
+  patientAPI,
+} from "../../services/api";
 import { buildLiveActivityLogs, downloadSimplePdf } from "../../lib/adminOps";
 
 const logTone = {
@@ -61,25 +64,36 @@ export default function AdminDashboard() {
   const [appointments, setAppointments] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [analyticsSource, setAnalyticsSource] = useState("");
+  const [opdheadcount, setCount] = useState(0);
+  const [dailyTotalHeadcount, setDailyTotalHeadcount] = useState(0);
+  const [footfallByHour, setFootfallByHour] = useState([]);
+  const [weeklyHeadcount, setWeeklyHeadcount] = useState([]);
 
   useEffect(() => {
     let mounted = true;
 
     const fetchLiveData = async () => {
       try {
-        const [patientsRes, doctorsRes, appointmentsRes, analyticsRes] = await Promise.all([
-          patientAPI.getAll(),
-          doctorAPI.getAll(),
-          appointmentAPI.getAll(),
-          aiAPI.getAdminDashboardAnalytics(),
-        ]);
+        const [patientsRes, doctorsRes, appointmentsRes, analyticsRes, headcountRes] =
+          await Promise.all([
+            patientAPI.getAll(),
+            doctorAPI.getAll(),
+            appointmentAPI.getAll(),
+            aiAPI.getAdminDashboardAnalytics(),
+            headcountAPI.getStats(),
+          ]);
 
         if (!mounted) return;
+
         setPatients(patientsRes.data || []);
         setDoctors(doctorsRes.data || []);
         setAppointments(appointmentsRes.data || []);
         setAnalytics(analyticsRes.data?.analytics || null);
         setAnalyticsSource(analyticsRes.data?.source || "");
+        setFootfallByHour(headcountRes.data?.footfallByHour || []);
+        setCount(headcountRes.data?.currentCount || 0);
+        setDailyTotalHeadcount(headcountRes.data?.totalHeadcount || 0);
+        setWeeklyHeadcount(headcountRes.data?.weeklyHeadcount || []);
       } catch (error) {
         console.error("Failed to load admin live data", error);
       }
@@ -113,28 +127,24 @@ export default function AdminDashboard() {
       `Patients today: ${patients.length}`,
       `Doctors online: ${doctors.filter((doctor) => doctor.availableToday).length}`,
       `Pending cases: ${appointments.filter((appointment) => appointment.status !== "completed").length}`,
-      `Average wait (AI): ${analytics?.overview?.avgWaitMinutes ?? 0} minutes`,
-      `OPD headcount (AI): ${analytics?.overview?.opdHeadcount ?? patients.length}`,
-      `Bottleneck department: ${analytics?.overview?.bottleneckDepartment || "General Medicine"}`,
-      "",
-      "Department occupancy",
-      ...(analytics?.departmentLoad || []).map(
-        (entry) => `${entry.name}: ${entry.patients} patients / capacity ${entry.capacity}`,
-      ),
+      `Current OPD headcount: ${opdheadcount ?? patients.length}`,
+      `Total headcount today: ${dailyTotalHeadcount}`,
       "",
       "Hourly footfall",
-      ...(analytics?.footfallByHour || []).map(
-        (entry) => `${entry.h}: ${entry.count} arrivals`,
-      ),
+      ...(footfallByHour || []).map((entry) => `${entry.h}: ${entry.count} arrivals`),
+      "",
+      "Weekly day-wise headcount",
+      ...(weeklyHeadcount.length > 0
+        ? weeklyHeadcount.map(
+            (entry) => `${entry.weekday} (${entry.dateKey}): ${entry.totalHeadcount}`,
+          )
+        : ["No stored weekly headcount available yet."]),
       "",
       "AI recommendations",
       ...((analytics?.recommendations || []).map((entry) => `- ${entry}`)),
       "",
       "Recent live activity",
-      ...liveActivityLogs.flatMap((entry) => [
-        `${entry.timestamp} | ${entry.user}`,
-        entry.action,
-      ]),
+      ...liveActivityLogs.flatMap((entry) => [`${entry.timestamp} | ${entry.user}`, entry.action]),
     ];
 
     downloadSimplePdf(
@@ -149,13 +159,8 @@ export default function AdminDashboard() {
   const pendingCases = appointments.filter(
     (appointment) => appointment.status !== "completed",
   ).length;
-  const averageWait = analytics?.overview?.avgWaitMinutes ?? "9.4";
-  const aiHeadcount = analytics?.overview?.opdHeadcount ?? patientsToday;
-  const departmentLoad = analytics?.departmentLoad || [];
-  const footfallByHour = analytics?.footfallByHour || [];
+  const aiHeadcount = opdheadcount ?? patientsToday;
   const recommendations = analytics?.recommendations || [];
-  const bottleneckDepartment =
-    analytics?.overview?.bottleneckDepartment || "General Medicine";
 
   return (
     <div className="space-y-6 animate-enter">
@@ -174,14 +179,17 @@ export default function AdminDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={exportDailyReport} className="btn-primary text-sm flex items-center gap-2">
+            <button
+              onClick={exportDailyReport}
+              className="btn-primary text-sm flex items-center gap-2"
+            >
               <Download className="w-3.5 h-3.5" /> Export daily report
             </button>
           </div>
         </div>
       </section>
 
-      <section className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Kpi
           icon={Users}
           label="Patients today"
@@ -194,13 +202,6 @@ export default function AdminDashboard() {
           label="Doctors online"
           value={doctorsOnline}
           tone="bg-accent/15 text-accent"
-        />
-        <Kpi
-          icon={Activity}
-          label="Avg. wait"
-          value={`${averageWait}m`}
-          note={`AI estimates pressure around ${bottleneckDepartment}`}
-          tone="bg-sage/20 text-sage"
         />
         <Kpi
           icon={FileText}
@@ -217,76 +218,91 @@ export default function AdminDashboard() {
         />
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3 card-elev p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="font-display text-xl">Department occupancy</h3>
-              <p className="text-xs text-muted-foreground">Current patients vs. capacity</p>
-            </div>
-            <span className="chip">
-              <span className="w-1.5 h-1.5 rounded-full bg-sage" /> Live
-            </span>
+      <section className="card-elev p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="font-display text-xl">Footfall · today</h3>
+            <p className="text-xs text-muted-foreground">Hourly patient inflow</p>
           </div>
-          <div className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={departmentLoad} margin={{ left: -10, top: 10 }} barGap={6}>
-                <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="2 4" vertical={false} />
-                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: 12,
-                    fontSize: 12,
-                  }}
-                  cursor={{ fill: "hsl(var(--muted) / 0.5)" }}
-                />
-                <Bar dataKey="capacity" fill="hsl(var(--muted))" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="patients" fill="hsl(var(--chart-1))" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <Calendar className="w-4 h-4 text-muted-foreground" />
         </div>
-
-        <div className="lg:col-span-2 card-elev p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="font-display text-xl">Footfall · today</h3>
-              <p className="text-xs text-muted-foreground">Hourly patient inflow</p>
-            </div>
-            <Calendar className="w-4 h-4 text-muted-foreground" />
-          </div>
-          <div className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={footfallByHour} margin={{ left: -15, top: 10 }}>
-                <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="2 4" vertical={false} />
-                <XAxis dataKey="h" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: 12,
-                    fontSize: 12,
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="count"
-                  stroke="hsl(var(--chart-2))"
-                  strokeWidth={2.5}
-                  dot={{ fill: "hsl(var(--chart-2))", r: 3 }}
-                  activeDot={{ r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+        <div className="h-[280px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={footfallByHour} margin={{ left: -15, top: 10 }}>
+              <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="2 4" vertical={false} />
+              <XAxis
+                dataKey="h"
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: 12,
+                  fontSize: 12,
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="count"
+                stroke="hsl(var(--chart-2))"
+                strokeWidth={2.5}
+                dot={{ fill: "hsl(var(--chart-2))", r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="card-elev p-6 bg-gradient-to-br from-primary/10 to-sage/10 border-primary/20">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-display text-xl">Weekly headcount</h3>
+              <p className="text-xs text-muted-foreground">
+                Stored automatically from daily YOLO totals
+              </p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-border/70 bg-background/60 p-4">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                Total headcount today
+              </p>
+              <p className="font-display text-4xl mt-2">{dailyTotalHeadcount}</p>
+            </div>
+            <ul className="space-y-2">
+              {weeklyHeadcount.length > 0 ? (
+                weeklyHeadcount.map((entry) => (
+                  <li
+                    key={entry.dateKey}
+                    className="flex items-center justify-between rounded-xl bg-background/60 px-4 py-3"
+                  >
+                    <span className="text-sm text-muted-foreground">
+                      {entry.weekday} · {entry.dateKey}
+                    </span>
+                    <span className="font-medium">{entry.totalHeadcount}</span>
+                  </li>
+                ))
+              ) : (
+                <li className="rounded-xl bg-background/60 px-4 py-3 text-sm text-muted-foreground">
+                  Weekly headcount will appear here once daily totals are stored.
+                </li>
+              )}
+            </ul>
+          </div>
+        </div>
+
         <div className="lg:col-span-2 card-elev p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -298,8 +314,15 @@ export default function AdminDashboard() {
           </div>
           <ul className="space-y-2">
             {liveActivityLogs.map((log) => (
-              <li key={log.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-muted/40 transition">
-                <div className={`w-9 h-9 rounded-lg grid place-items-center shrink-0 ${logTone[log.type] || logTone.system}`}>
+              <li
+                key={log.id}
+                className="flex items-start gap-3 p-3 rounded-xl hover:bg-muted/40 transition"
+              >
+                <div
+                  className={`w-9 h-9 rounded-lg grid place-items-center shrink-0 ${
+                    logTone[log.type] || logTone.system
+                  }`}
+                >
                   <Sparkles className="w-4 h-4" />
                 </div>
                 <div className="flex-1">

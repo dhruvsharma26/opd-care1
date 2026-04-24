@@ -1,6 +1,39 @@
 import mongoose from "mongoose";
 
 const genderOptions = ["Male", "Female", "Other", "Non-binary", "Prefer not to say"];
+export const HOURLY_HEADCOUNT_BUCKETS = [
+  "8a",
+  "9a",
+  "10a",
+  "11a",
+  "12p",
+  "1p",
+  "2p",
+  "3p",
+  "4p",
+  "5p",
+  "6p",
+  "7p",
+];
+
+const createHourlyHeadcountDefaults = () =>
+  HOURLY_HEADCOUNT_BUCKETS.map((h) => ({ h, count: 0 }));
+
+const hourlyHeadcountSchema = new mongoose.Schema(
+  {
+    h: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    count: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+  },
+  { _id: false },
+);
 
 const patientReportSchema = new mongoose.Schema(
   {
@@ -395,13 +428,54 @@ const userSchema = new mongoose.Schema(
   },
 );
 
+const dailyHeadcountSchema = new mongoose.Schema(
+  {
+    dateKey: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+    date: {
+      type: Date,
+      required: true,
+      index: true,
+    },
+    weekday: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    totalHeadcount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    currentCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    footfallByHour: {
+      type: [hourlyHeadcountSchema],
+      default: createHourlyHeadcountDefaults,
+    },
+  },
+  {
+    timestamps: true,
+  },
+);
+
 appointmentSchema.index({ patientId: 1, createdAt: -1 });
 appointmentSchema.index({ doctorId: 1, createdAt: -1 });
 patientSchema.index({ email: 1 });
 doctorSchema.index({ email: 1 });
 userSchema.index({ email: 1 });
+dailyHeadcountSchema.index({ dateKey: 1 }, { unique: true });
+dailyHeadcountSchema.index({ date: -1 });
 
 export const Appointment = mongoose.model("Appointment", appointmentSchema);
 export const Patient = mongoose.model("Patient", patientSchema);
 export const Doctor = mongoose.model("Doctor", doctorSchema);
 export const User = mongoose.model("User", userSchema);
+export const DailyHeadcount = mongoose.model("DailyHeadcount", dailyHeadcountSchema);

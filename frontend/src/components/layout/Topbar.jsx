@@ -24,7 +24,6 @@ const SEARCH_INDEX = {
   admin: [
     { label: "Operations overview", path: "/admin" },
     { label: "Authorize clinicians", path: "/admin/authorize" },
-    { label: "Live headcount", path: "/admin/headcount" },
     { label: "Audit logs", path: "/admin/audit" },
   ],
 };

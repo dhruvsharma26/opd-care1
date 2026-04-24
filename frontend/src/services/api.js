@@ -73,4 +73,8 @@ export const aiAPI = {
   getAdminDashboardAnalytics: () => apiClient.get("/ai/admin-dashboard"),
 };
 
+export const headcountAPI = {
+  getStats: () => apiClient.get("/opdheadcount-stats"),
+};
+
 export default apiClient;

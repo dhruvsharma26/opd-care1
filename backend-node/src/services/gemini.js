@@ -111,14 +111,14 @@ const summarizeOperationalData = ({ patients, doctors, appointments }) => {
     departmentCounts.get(specialty).patients += 1;
   });
 
-  const hourlyBuckets = buildHourlyBuckets();
-  const hourlyMap = new Map(hourlyBuckets.map((entry) => [entry.h, entry]));
-  [...patients, ...appointments].forEach((record) => {
-    const bucket = formatHourBucket(record.createdAt);
-    if (bucket && hourlyMap.has(bucket)) {
-      hourlyMap.get(bucket).count += 1;
-    }
-  });
+  // const hourlyBuckets = buildHourlyBuckets();
+  // const hourlyMap = new Map(hourlyBuckets.map((entry) => [entry.h, entry]));
+  // [...patients, ...appointments].forEach((record) => {
+  //   const bucket = formatHourBucket(record.createdAt);
+  //   if (bucket && hourlyMap.has(bucket)) {
+  //     hourlyMap.get(bucket).count += 1;
+  //   }
+  // });
 
   return {
     patientsCount: patients.length,
@@ -131,7 +131,7 @@ const summarizeOperationalData = ({ patients, doctors, appointments }) => {
       (entry) => (entry.authorization?.status || "pending") === "pending",
     ).length,
     departmentCounts: Array.from(departmentCounts.values()),
-    hourlyBuckets,
+    // hourlyBuckets,
     recentComplaints: appointments.slice(0, 20).map((entry) => ({
       complaint: entry.complaint,
       specialty: entry.specialty,
@@ -367,23 +367,23 @@ export const analyzeAdminDashboardWithGemini = async ({ patients, doctors, appoi
             required: ["name", "patients", "capacity"],
           },
         },
-        footfallByHour: {
-          type: "ARRAY",
-          items: {
-            type: "OBJECT",
-            properties: {
-              h: { type: "STRING" },
-              count: { type: "INTEGER" },
-            },
-            required: ["h", "count"],
-          },
-        },
+        // footfallByHour: {
+        //   type: "ARRAY",
+        //   items: {
+        //     type: "OBJECT",
+        //     properties: {
+        //       h: { type: "STRING" },
+        //       count: { type: "INTEGER" },
+        //     },
+        //     required: ["h", "count"],
+        //   },
+        // },
         recommendations: {
           type: "ARRAY",
           items: { type: "STRING" },
         },
       },
-      required: ["overview", "departmentLoad", "footfallByHour", "recommendations"],
+      required: ["overview", "departmentLoad", "recommendations"],
     },
     temperature: 0.3,
   });
