@@ -14,6 +14,11 @@ export const HOURLY_HEADCOUNT_BUCKETS = [
   "5p",
   "6p",
   "7p",
+  "8p",
+  "9p",
+  "10p",
+  "11p",
+  "12a",
 ];
 
 const createHourlyHeadcountDefaults = () =>

@@ -63,6 +63,9 @@ const normalizeBuckets = (buckets = []) => {
 export let opdHeadcount = cloneHourlyBuckets();
 export let totalFootfall = 0;
 export let currentCount = 0;
+let lastObservedCount = 0;
+let lastWsPayload = null;
+let lastProcessedMeta = null;
 
 let activeDateKey = getDateKey();
 let persistQueue = Promise.resolve();
@@ -80,6 +83,7 @@ const syncStateFromDocument = (doc) => {
   if (!doc) return;
   activeDateKey = doc.dateKey || getDateKey();
   currentCount = doc.currentCount || 0;
+  lastObservedCount = currentCount;
   totalFootfall = doc.totalHeadcount || 0;
   opdHeadcount = normalizeBuckets(doc.footfallByHour);
   lastPersistedSignature = buildSnapshotSignature();
@@ -90,6 +94,7 @@ const resetInMemoryState = (date = new Date()) => {
   currentCount = 0;
   totalFootfall = 0;
   opdHeadcount = cloneHourlyBuckets();
+  lastObservedCount = 0;
   lastPersistedSignature = "";
 };
 
@@ -185,6 +190,17 @@ export const getWeeklyHeadcountHistory = async () => {
   }));
 };
 
+export const getHeadcountDebugSnapshot = () => ({
+  timezone: APP_TIMEZONE,
+  activeDateKey,
+  currentCount,
+  totalFootfall,
+  lastObservedCount,
+  lastWsPayload,
+  lastProcessedMeta,
+  footfallByHour: opdHeadcount,
+});
+
 if (mongoose.connection.readyState === 1) {
   syncHeadcountStateFromDb();
 } else {
@@ -206,9 +222,17 @@ const connectWebSocket = () => {
 
       const data = JSON.parse(message);
       const count = Number(data.count) || 0;
-      const increment = Number(data.increment) || 0;
+      let increment = Number(data.increment) || 0;
+      const sourceIncrement = Number(data.increment);
+
+      // Some YOLO streams only publish current count. If increment is missing/zero,
+      // derive arrivals from positive count deltas so hourly footfall keeps updating.
+      if (increment <= 0) {
+        increment = Math.max(0, count - lastObservedCount);
+      }
 
       currentCount = count;
+      lastObservedCount = count;
 
       if (increment > 0) {
         totalFootfall += increment;
@@ -218,6 +242,20 @@ const connectWebSocket = () => {
           entry.h === currentHour ? { ...entry, count: entry.count + increment } : entry,
         );
       }
+
+      lastWsPayload = {
+        ...data,
+        receivedAt: new Date().toISOString(),
+      };
+      lastProcessedMeta = {
+        count,
+        sourceIncrement: Number.isFinite(sourceIncrement) ? sourceIncrement : null,
+        appliedIncrement: increment,
+        incrementMode: increment > 0 && (sourceIncrement <= 0 || !Number.isFinite(sourceIncrement))
+          ? "derived_from_count_delta"
+          : "source_increment",
+        currentHour: formatHourBucket(),
+      };
 
       await persistCurrentState();
     } catch (error) {
